@@ -12,12 +12,10 @@ const adapter = new PrismaBetterSqlite3({
 const prisma = new PrismaClient({ adapter });
 const app = express();
 
-// Permite que o React (porta diferente) consuma essa API
 app.use(cors());
-// Permite que a API entenda requisições em JSON
+
 app.use(express.json());
 
-// 1. Rota para listar produtos e seus comentários
 app.get('/api/products', async (_req: Request, res: Response) => {
   try {
     const products = await prisma.product.findMany({
@@ -30,14 +28,11 @@ app.get('/api/products', async (_req: Request, res: Response) => {
   }
 });
 
-// 2. Rota VULNERÁVEL para adicionar comentários (Stored XSS)
+
 app.post('/api/comments', async (req: Request, res: Response) => {
   const { productId, content } = req.body;
   
   try {
-    // VULNERABILIDADE (OWASP A03:2021): 
-    // O conteúdo (content) recebido do usuário vai direto para o banco de dados
-    // sem passar por nenhuma função de sanitização ou escape HTML.
     const newComment = await prisma.comment.create({
       data: {
         content: content,
@@ -54,5 +49,5 @@ app.post('/api/comments', async (req: Request, res: Response) => {
 
 const PORT = 3001;
 app.listen(PORT, () => {
-  console.log(`🚀 API Vulnerável do TCC rodando na porta ${PORT}`);
+  console.log(`API Vulnerável do TCC rodando na porta ${PORT}`);
 });
