@@ -1,44 +1,64 @@
 import { useState } from 'react';
-import type { Product } from '../../types/domain';
+import type { Product, Usuario } from '../../types/domain';
 import { Button } from '../atoms/Button';
 import { VulnerableHtml } from '../atoms/VulnerableHtml';
 import { CommentForm } from '../molecules/CommentForm';
 
 interface ProductDetailsProps {
-  product: Product & {
+  produto: Product & {
     price: string;
     oldPrice: string;
     savings: string;
-    imageLabel: string;
+    imageUrl: string;
     buyLink: string;
   };
-  onBack: () => void;
-  onAddComment: (productId: number, content: string) => Promise<void>;
+  aoVoltar: () => void;
+  aoAdicionarComentario: (idProduto: number, conteudo: string) => Promise<void>;
+  usuarioLogado: Usuario | null;
+  erroComentario: string;
+  aoLogout: () => void;
+  aoIrParaLogin: () => void;
 }
 
-export const ProductDetails = ({ product, onBack, onAddComment }: ProductDetailsProps) => {
-  const [rating, setRating] = useState(4);
+export const ProductDetails = ({
+  produto,
+  aoVoltar,
+  aoAdicionarComentario,
+  usuarioLogado,
+  erroComentario,
+  aoLogout,
+  aoIrParaLogin
+}: ProductDetailsProps) => {
+  const [avaliacao, setAvaliacao] = useState(4);
+  const handleImageError = (event: React.SyntheticEvent<HTMLImageElement>) => {
+    const target = event.currentTarget;
+    if (target.dataset.fallbackApplied === 'true') {
+      return;
+    }
+
+    target.dataset.fallbackApplied = 'true';
+    target.src = '/image-224acc37069842568a859bd4cdd15ab8.webp';
+  };
 
   return (
     <section className="product-details">
-      <button type="button" className="back-link" onClick={onBack}>
-        {'<- Voltar para vitrine'}
+      <button type="button" className="back-link" onClick={aoVoltar}>
+        {'<- Voltar para vitrine de ofertas'}
       </button>
 
       <div className="product-details__layout">
-        <div className="product-details__media" aria-hidden="true">
-          <span>{product.imageLabel}</span>
-          <small>Area de imagem aberta: substitua pela foto final do produto</small>
+        <div className="product-details__media">
+          <img src={produto.imageUrl} alt={produto.name} loading="lazy" onError={handleImageError} />
         </div>
 
         <div className="product-details__content">
           <p className="kicker">Detalhes do produto</p>
-          <h2>{product.name}</h2>
-          <p>{product.description}</p>
+          <h2>{produto.name}</h2>
+          <p>{produto.description}</p>
           <p className="deal-card__price detail-price">
-            {product.price} <span>{product.oldPrice}</span>
+            {produto.price} <span>{produto.oldPrice}</span>
           </p>
-          <p className="deal-card__save">Economia estimada: {product.savings}</p>
+          <p className="deal-card__save">Economia estimada: {produto.savings}</p>
 
           <div className="rating-box">
             <strong>Avaliar produto</strong>
@@ -47,21 +67,21 @@ export const ProductDetails = ({ product, onBack, onAddComment }: ProductDetails
                 <button
                   key={star}
                   type="button"
-                  className={`star ${rating >= star ? 'is-on' : ''}`}
-                  onClick={() => setRating(star)}
+                  className={`star ${avaliacao >= star ? 'is-on' : ''}`}
+                  onClick={() => setAvaliacao(star)}
                 >
                   ★
                 </button>
               ))}
             </div>
-            <small>Sua nota atual: {rating}/5</small>
+            <small>Sua nota atual: {avaliacao}/5</small>
           </div>
 
           <div className="detail-actions">
-            <a href={product.buyLink} target="_blank" rel="noreferrer">
+            <a href={produto.buyLink} target="_blank" rel="noreferrer">
               <Button type="button" variant="primary">Ir para compra</Button>
             </a>
-            <Button type="button" variant="ghost" onClick={onBack}>
+            <Button type="button" variant="ghost" onClick={aoVoltar}>
               Continuar navegando
             </Button>
           </div>
@@ -69,14 +89,43 @@ export const ProductDetails = ({ product, onBack, onAddComment }: ProductDetails
       </div>
 
       <section className="comments-section detail-comments">
-        <h3>Comentarios e reviews (Stored XSS)</h3>
-        <CommentForm onSubmit={(content) => onAddComment(product.id, content)} />
-        {product.comments.length === 0 ? (
+        <h3>Comentarios e avaliacoes (XSS Armazenado)</h3>
+        {usuarioLogado ? (
+          <div className="usuario-logado-box">
+            <span>Logado como <strong>{usuarioLogado.username}</strong></span>
+            <Button type="button" variant="ghost" size="sm" onClick={aoLogout}>
+              Sair
+            </Button>
+          </div>
+        ) : (
+          <div className="auth-box">
+            <p className="auth-box__title">Entre para comentar</p>
+            <div className="auth-actions">
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => {
+                  aoIrParaLogin();
+                }}
+              >
+                Ir para pagina de login
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <CommentForm
+          aoEnviar={(conteudo) => aoAdicionarComentario(produto.id, conteudo)}
+          desabilitado={!usuarioLogado}
+        />
+        {erroComentario ? <p className="auth-error">{erroComentario}</p> : null}
+        {produto.comments.length === 0 ? (
           <p className="empty-state">Nenhum comentario ainda.</p>
         ) : (
-          product.comments.map((comment) => (
-            <div key={comment.id} className="comment-bubble">
-              <VulnerableHtml content={comment.content} className="comment-content" />
+          produto.comments.map((comentario) => (
+            <div key={comentario.id} className="comment-bubble">
+              <p className="comment-meta">Comentado por: <strong>{comentario.user.username}</strong></p>
+              <VulnerableHtml content={comentario.content} className="comment-content" />
             </div>
           ))
         )}

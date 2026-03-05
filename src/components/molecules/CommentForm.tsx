@@ -3,38 +3,42 @@ import { Button } from '../atoms/Button';
 import { TextInput } from '../atoms/TextInput';
 
 interface CommentFormProps {
-  onSubmit: (content: string) => Promise<void>;
+  aoEnviar: (conteudo: string) => Promise<void>;
+  desabilitado?: boolean;
 }
 
-export const CommentForm = ({ onSubmit }: CommentFormProps) => {
-  const [content, setContent] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
+export const CommentForm = ({ aoEnviar, desabilitado = false }: CommentFormProps) => {
+  const [conteudo, setConteudo] = useState('');
+  const [salvando, setSalvando] = useState(false);
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const aoSubmeter = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!content.trim()) {
+    if (!conteudo.trim() || desabilitado) {
       return;
     }
 
-    setIsSaving(true);
+    setSalvando(true);
     try {
-      await onSubmit(content);
-      setContent('');
+      await aoEnviar(conteudo);
+      setConteudo('');
+    } catch {
+      // Erro de envio exibido pelo componente pai.
     } finally {
-      setIsSaving(false);
+      setSalvando(false);
     }
   };
 
   return (
-    <form className="comment-form" onSubmit={handleSubmit}>
+    <form className="comment-form" onSubmit={aoSubmeter}>
       <TextInput
         name="comment"
-        placeholder="Deixe um comentario (campo vulneravel para estudo)"
-        value={content}
-        onChange={(event) => setContent(event.target.value)}
+        placeholder={desabilitado ? 'Faca login para comentar' : 'Deixe um comentario'}
+        value={conteudo}
+        onChange={(event) => setConteudo(event.target.value)}
+        disabled={desabilitado || salvando}
       />
-      <Button type="submit" variant="danger" size="sm" disabled={isSaving}>
-        {isSaving ? 'Salvando...' : 'Enviar'}
+      <Button type="submit" variant="danger" size="sm" disabled={salvando || desabilitado}>
+        {salvando ? 'Salvando...' : 'Enviar'}
       </Button>
     </form>
   );

@@ -1,4 +1,4 @@
-const categories = [
+const categorias = [
   'Todos',
   'Cadernos',
   'Smartphones',
@@ -9,21 +9,21 @@ const categories = [
 ];
 
 interface CategoryTabsProps {
-  selectedCategory: string;
-  onSelectCategory: (category: string) => void;
+  categoriaSelecionada: string;
+  aoSelecionarCategoria: (categoria: string) => void;
 }
 
-export const CategoryTabs = ({ selectedCategory, onSelectCategory }: CategoryTabsProps) => {
+export const CategoryTabs = ({ categoriaSelecionada, aoSelecionarCategoria }: CategoryTabsProps) => {
   return (
     <div className="category-tabs" aria-label="Categorias">
-      {categories.map((category) => (
+      {categorias.map((categoria) => (
         <button
           type="button"
-          key={category}
-          className={`category-tabs__item ${selectedCategory === category ? 'is-active' : ''}`}
-          onClick={() => onSelectCategory(category)}
+          key={categoria}
+          className={`category-tabs__item ${categoriaSelecionada === categoria ? 'is-active' : ''}`}
+          onClick={() => aoSelecionarCategoria(categoria)}
         >
-          {category}
+          {categoria}
         </button>
       ))}
     </div>

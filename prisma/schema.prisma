@@ -13,17 +13,20 @@ model Product {
   comments    Comment[]
 }
 
+model User {
+  id       Int       @id @default(autoincrement())
+  username String    @unique
+  password String
+  comments Comment[]
+}
+
 model Comment {
   id        Int     @id @default(autoincrement())
   content   String
   productId Int
+  userId    Int
   product   Product @relation(fields: [productId], references: [id])
+  user      User    @relation(fields: [userId], references: [id])
 }
 
-model User {
-  id       Int    @id @default(autoincrement())
-  username String
-  password String
-  type     String
-}
 

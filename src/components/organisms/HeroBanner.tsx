@@ -9,7 +9,6 @@ export const HeroBanner = ({ onViewOffers, onViewCollections }: HeroBannerProps)
   return (
     <section className="hero-banner">
       <div className="hero-banner__content">
-        <p className="hero-banner__eyebrow">Colecao de abril</p>
         <h2>Tecnologia com performance para estudar, trabalhar e testar.</h2>
         <p>
           Explore um catalogo moderno com foco em notebooks, monitores e setups completos.
@@ -22,10 +21,9 @@ export const HeroBanner = ({ onViewOffers, onViewCollections }: HeroBannerProps)
       </div>
 
       <aside className="hero-banner__highlight">
-        <p className="kicker">Oferta da semana</p>
-        <h3>Notebook Nitro Vision 16</h3>
-        <p>Processador de ultima geracao, 32GB RAM e GPU dedicada.</p>
-        <strong>R$ 6.499,00</strong>
+        <h3>Destaques da loja</h3>
+        <p>Selecao com notebooks, smartphones e perifericos para todos os perfis.</p>
+        <strong>Novidades toda semana</strong>
       </aside>
     </section>
   );

@@ -3,51 +3,47 @@ export const Footer = () => {
     <footer className="site-footer">
       <div className="footer-grid">
         <section>
-          <h3>MegaMart</h3>
-          <h4>Contact Us</h4>
-          <p>WhatsApp: +1 202-918-2132</p>
-          <p>Call Us: +1 202-918-2132</p>
-          <h4>Download App</h4>
-          <div className="store-badges" aria-hidden="true">
-            <span>App Store (placeholder)</span>
-            <span>Google Play (placeholder)</span>
-          </div>
+          <h3>Nexora Tech</h3>
+          <h4>Fale Conosco</h4>
+          <p>
+            WhatsApp:{' '}
+            <a href="https://wa.me/5511988880000" target="_blank" rel="noreferrer">
+              (11) 98888-0000
+            </a>
+          </p>
+          <p>
+            Telefone: <a href="tel:+551140001234">(11) 4000-1234</a>
+          </p>
+          <p>
+            Email: <a href="mailto:contato@nexoratech.com">contato@nexoratech.com</a>
+          </p>
         </section>
 
         <section>
-          <h4>Most Popular Categories</h4>
+          <h4>Categorias em Destaque</h4>
           <ul>
-            <li>Staples</li>
-            <li>Beverages</li>
-            <li>Personal Care</li>
-            <li>Home Care</li>
-            <li>Baby Care</li>
-            <li>Vegetables & Fruits</li>
-            <li>Snacks & Foods</li>
-            <li>Dairy & Bakery</li>
+            <li><a href="#categories-section">Smartphones</a></li>
+            <li><a href="#categories-section">Notebooks</a></li>
+            <li><a href="#categories-section">Monitores</a></li>
+            <li><a href="#categories-section">Cadernos</a></li>
+            <li><a href="#categories-section">Perifericos</a></li>
+            <li><a href="#categories-section">Acessorios</a></li>
           </ul>
         </section>
 
         <section>
-          <h4>Customer Services</h4>
+          <h4>Informacoes</h4>
           <ul>
-            <li>About Us</li>
-            <li>Terms & Conditions</li>
-            <li>FAQ</li>
-            <li>Privacy Policy</li>
-            <li>E-waste Policy</li>
-            <li>Cancellation & Return Policy</li>
+            <li><a href="#quem-somos-section">Quem Somos</a></li>
+            <li><a href="#home-section">Termos de Uso</a></li>
+            <li><a href="#home-section">Politica de Privacidade</a></li>
+            <li><a href="#duvidas-section">Duvidas Frequentes</a></li>
           </ul>
-        </section>
-
-        <section>
-          <h4>Institucional</h4>
-          <p>Template para TCC de seguranca web com demonstracao de XSS.</p>
-          <p>Espaco aberto para logos e selos da loja.</p>
+          <p>Projeto academico para demonstracao de seguranca web com foco em XSS.</p>
         </section>
       </div>
 
-      <div className="footer-copy">© 2022 All rights reserved. Reliance Retail Ltd.</div>
+      <div className="footer-copy">© 2026 Nexora Tech. Todos os direitos reservados.</div>
     </footer>
   );
 };

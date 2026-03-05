@@ -12,10 +12,10 @@ body {
   margin: 0;
   min-width: 320px;
   background:
-    radial-gradient(circle at 20% -10%, rgba(16, 163, 206, 0.24), transparent 35%),
-    radial-gradient(circle at 90% 10%, rgba(245, 158, 11, 0.18), transparent 32%),
-    #f6f8fb;
-  color: #12213a;
+    radial-gradient(circle at 20% -10%, rgba(14, 11, 84, 0.22), transparent 35%),
+    radial-gradient(circle at 90% 10%, rgba(119, 189, 235, 0.2), transparent 32%),
+    #f2f5ff;
+  color: #11133f;
   font-family: 'Plus Jakarta Sans', 'Segoe UI', sans-serif;
   line-height: 1.45;
   -webkit-font-smoothing: antialiased;

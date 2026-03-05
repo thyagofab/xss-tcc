@@ -1,25 +1,27 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { VulnerableHtml } from '../components/atoms/VulnerableHtml';
+import { useNavigate } from 'react-router-dom';
 import { CategoryTabs } from '../components/molecules/CategoryTabs';
-import { HeroBanner } from '../components/organisms/HeroBanner';
 import { ProductDetails } from '../components/organisms/ProductDetails';
-import { PromoStrip } from '../components/organisms/PromoStrip';
 import { ProductCard } from '../components/organisms/ProductCard';
 import { StoreTemplate } from '../components/templates/StoreTemplate';
-import type { Product } from '../types/domain';
+import type { Product, Usuario } from '../types/domain';
+
+const API_BASE = 'http://localhost:3001/api';
+const CHAVE_TOKEN_LOCALSTORAGE = 'token_usuario_tcc';
+const CHAVE_COOKIE_SESSAO = 'token_usuario_tcc';
 
 interface CatalogProduct extends Product {
   price: string;
   oldPrice: string;
   savings: string;
-  imageLabel: string;
+  imageUrl: string;
   buyLink: string;
   category: 'Cadernos' | 'Smartphones' | 'Notebooks' | 'Monitores' | 'Perifericos' | 'Acessorios';
 }
 
-type NavTarget = 'home' | 'ofertas' | 'categorias' | 'contato';
-type DisplayCategory = 'Todos' | CatalogProduct['category'];
-const CATEGORY_ORDER: CatalogProduct['category'][] = [
+type AlvoNavegacao = 'home' | 'ofertas' | 'categorias' | 'contato' | 'login';
+type CategoriaExibida = 'Todos' | CatalogProduct['category'];
+const ORDEM_CATEGORIAS: CatalogProduct['category'][] = [
   'Smartphones',
   'Notebooks',
   'Monitores',
@@ -28,7 +30,7 @@ const CATEGORY_ORDER: CatalogProduct['category'][] = [
   'Acessorios'
 ];
 
-const CATEGORY_BY_NAME: Record<string, CatalogProduct['category']> = {
+const CATEGORIA_POR_NOME: Record<string, CatalogProduct['category']> = {
   'Acer Nitro 5 - TCC Edition': 'Notebooks',
   'Galaxy M13 4GB 64GB': 'Smartphones',
   'Galaxy M33 5G 6GB 128GB': 'Smartphones',
@@ -44,129 +46,239 @@ const CATEGORY_BY_NAME: Record<string, CatalogProduct['category']> = {
   'Caderno Study Planner Max': 'Cadernos'
 };
 
-const formatCatalogProduct = (product: Product, index: number): CatalogProduct => {
-  const prices = [
+const IMAGEM_PADRAO_PRODUTO = '/images.jpeg';
+
+const IMAGEM_POR_NOME_PRODUTO: Record<string, string> = {
+  'Acer Nitro 5 - TCC Edition': '/acer-nitro-v15-06.avif',
+  'Galaxy M13 4GB 64GB': '/celular1.webp',
+  'Galaxy M33 5G 6GB 128GB': '/celular1.webp',
+  'Galaxy S22 Ultra 256GB': '/celular2.webp',
+  'Monitor UltraWide Vision Pro 29': '/monitor.avif',
+  'Caderno Smart Notes 360': '/caderno.webp',
+  'Teclado Mecanico RGB Pro': '/teclado.jpg',
+  'Mouse Gamer Falcon X': '/mouse.webp',
+  'Headset Pulse 7.1': '/images.jpeg',
+  'Webcam Stream HD 1080p': '/webcam.jpg',
+  'Notebook DevBook Air 14': '/notebook1.png',
+  'Monitor PixelView 24 IPS': '/monitor.avif',
+  'Caderno Study Planner Max': '/caderno.webp'
+};
+
+const DUVIDAS_FREQUENTES = [
+  {
+    pergunta: 'Frete para capitais',
+    resposta: 'Entregas para capitais acontecem entre 2 e 5 dias uteis, conforme disponibilidade do produto.'
+  },
+  {
+    pergunta: 'Frete para interior',
+    resposta: 'Para cidades do interior, o prazo medio e de 4 a 10 dias uteis.'
+  },
+  {
+    pergunta: 'Garantia dos produtos',
+    resposta: 'Todos os produtos possuem garantia minima de 12 meses contra defeitos de fabricacao.'
+  },
+  {
+    pergunta: 'Trocas e devolucoes',
+    resposta: 'Voce pode solicitar troca ou devolucao em ate 7 dias corridos apos o recebimento.'
+  },
+  {
+    pergunta: 'Suporte tecnico',
+    resposta: 'O atendimento funciona em horario comercial por WhatsApp e email para duvidas e pos-venda.'
+  }
+];
+
+const formatarProdutoCatalogo = (produto: Product, indice: number): CatalogProduct => {
+  const tabelaPrecos = [
     { price: 'R$ 3.299', oldPrice: 'R$ 7.499', savings: 'R$ 4.200' },
     { price: 'R$ 1.049', oldPrice: 'R$ 1.499', savings: 'R$ 450' },
     { price: 'R$ 1.699', oldPrice: 'R$ 2.499', savings: 'R$ 800' },
     { price: 'R$ 3.199', oldPrice: 'R$ 4.099', savings: 'R$ 900' }
   ];
 
-  const preset = prices[index % prices.length];
+  const precoSelecionado = tabelaPrecos[indice % tabelaPrecos.length];
   return {
-    ...product,
-    ...preset,
-    imageLabel: `Imagem ${product.name}`,
-    buyLink: `https://example.com/produto/${product.id}`,
-    category: CATEGORY_BY_NAME[product.name] ?? 'Acessorios'
+    ...produto,
+    ...precoSelecionado,
+    imageUrl:
+      IMAGEM_POR_NOME_PRODUTO[produto.name] ??
+      IMAGEM_PADRAO_PRODUTO,
+    buyLink: `https://example.com/produto/${produto.id}`,
+    category: CATEGORIA_POR_NOME[produto.name] ?? 'Acessorios'
   };
 };
 
 export const HomePage = () => {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [query, setQuery] = useState('');
-  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
-  const [selectedCategory, setSelectedCategory] = useState<DisplayCategory>('Todos');
-  const [activeNav, setActiveNav] = useState<NavTarget>('home');
-  const rowRefs = {
+  const navigate = useNavigate();
+  const [produtos, setProdutos] = useState<Product[]>([]);
+  const [carregando, setCarregando] = useState(true);
+  const [erro, setErro] = useState('');
+  const [erroComentario, setErroComentario] = useState('');
+  const [consulta, setConsulta] = useState('');
+  const [idProdutoSelecionado, setIdProdutoSelecionado] = useState<number | null>(null);
+  const [categoriaSelecionada, setCategoriaSelecionada] = useState<CategoriaExibida>('Todos');
+  const [navegacaoAtiva, setNavegacaoAtiva] = useState<AlvoNavegacao>('home');
+  const [indiceDuvidaAberta, setIndiceDuvidaAberta] = useState<number | null>(0);
+  const [usuarioLogado, setUsuarioLogado] = useState<Usuario | null>(null);
+  const [tokenSessao, setTokenSessao] = useState('');
+  const refsCarrosseis = {
     row1: useRef<HTMLElement | null>(null),
     row2: useRef<HTMLElement | null>(null),
     row3: useRef<HTMLElement | null>(null)
   };
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    setQuery(params.get('q') ?? '');
-    const productFromUrl = Number(params.get('product') ?? 0);
-    setSelectedProductId(productFromUrl > 0 ? productFromUrl : null);
+    const parametros = new URLSearchParams(window.location.search);
+    setConsulta(parametros.get('q') ?? '');
+    const produtoNaUrl = Number(parametros.get('product') ?? 0);
+    setIdProdutoSelecionado(produtoNaUrl > 0 ? produtoNaUrl : null);
+
+    const tokenArmazenado = localStorage.getItem(CHAVE_TOKEN_LOCALSTORAGE) ?? '';
+    setTokenSessao(tokenArmazenado);
+
+    if (tokenArmazenado) {
+      const carregarSessao = async () => {
+        try {
+          const resposta = await fetch(`${API_BASE}/auth/me`, {
+            headers: {
+              Authorization: `Bearer ${tokenArmazenado}`
+            }
+          });
+
+          if (!resposta.ok) {
+            localStorage.removeItem(CHAVE_TOKEN_LOCALSTORAGE);
+            setTokenSessao('');
+            return;
+          }
+
+          const dados = (await resposta.json()) as { user: Usuario };
+          // Mantem cookie inseguro sincronizado para demonstracao de XSS.
+          document.cookie = `${CHAVE_COOKIE_SESSAO}=${encodeURIComponent(tokenArmazenado)}; path=/; SameSite=Lax`;
+          setUsuarioLogado(dados.user);
+        } catch {
+          localStorage.removeItem(CHAVE_TOKEN_LOCALSTORAGE);
+          setTokenSessao('');
+        }
+      };
+
+      void carregarSessao();
+    }
   }, []);
 
-  const fetchProducts = async () => {
+  const buscarProdutos = async () => {
     try {
-      setIsLoading(true);
-      setError('');
-      const response = await fetch('http://localhost:3001/api/products');
-      if (!response.ok) {
+      setCarregando(true);
+      setErro('');
+      const resposta = await fetch(`${API_BASE}/products`);
+      if (!resposta.ok) {
         throw new Error('Nao foi possivel carregar os produtos.');
       }
-      const data = (await response.json()) as Product[];
-      setProducts(data);
+      const dados = (await resposta.json()) as Product[];
+      setProdutos(dados);
     } catch {
-      setError('Falha ao carregar produtos da API. Confira se o backend esta rodando na porta 3001.');
+      setErro('Falha ao carregar produtos da API. Confira se o backend esta rodando na porta 3001.');
     } finally {
-      setIsLoading(false);
+      setCarregando(false);
     }
   };
 
   useEffect(() => {
-    fetchProducts();
+    buscarProdutos();
   }, []);
 
-  const handleSearch = (searchQuery: string) => {
-    setQuery(searchQuery.trim());
-    setActiveNav('home');
-    setSelectedProductId(null);
+  const aoBuscar = (termoBusca: string) => {
+    setConsulta(termoBusca.trim());
+    setNavegacaoAtiva('home');
+    setIdProdutoSelecionado(null);
   };
 
-  const openProduct = (productId: number) => {
-    setSelectedProductId(productId);
-    setActiveNav('ofertas');
+  const abrirProduto = (idProduto: number) => {
+    setIdProdutoSelecionado(idProduto);
+    setNavegacaoAtiva('ofertas');
   };
 
-  const closeProduct = () => {
-    setSelectedProductId(null);
+  const fecharProduto = () => {
+    setIdProdutoSelecionado(null);
+    setNavegacaoAtiva('ofertas');
+    requestAnimationFrame(() => {
+      rolarParaSecao('offers-section');
+    });
   };
 
-  const scrollToSection = (id: string) => {
-    const element = document.getElementById(id);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const rolarParaSecao = (idSecao: string) => {
+    const elemento = document.getElementById(idSecao);
+    if (elemento) {
+      elemento.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
 
-  const handleNavigate = (target: NavTarget) => {
-    setActiveNav(target);
-    if (target === 'home') {
-      setSelectedProductId(null);
-      scrollToSection('home-section');
+  const aoNavegar = (destino: AlvoNavegacao) => {
+    setNavegacaoAtiva(destino);
+    if (destino === 'home') {
+      setIdProdutoSelecionado(null);
+      rolarParaSecao('home-section');
     }
-    if (target === 'ofertas') {
-      scrollToSection('offers-section');
+    if (destino === 'ofertas') {
+      rolarParaSecao('offers-section');
     }
-    if (target === 'categorias') {
-      scrollToSection('categories-section');
+    if (destino === 'categorias') {
+      rolarParaSecao('categories-section');
     }
-    if (target === 'contato') {
-      scrollToSection('contact-section');
+    if (destino === 'contato') {
+      rolarParaSecao('contact-section');
+    }
+    if (destino === 'login') {
+      navigate('/login');
     }
   };
 
-  const handleAddComment = async (productId: number, content: string) => {
-    const response = await fetch('http://localhost:3001/api/comments', {
+  const adicionarComentario = async (idProduto: number, conteudo: string) => {
+    if (!tokenSessao) {
+      setErroComentario('Faca login para comentar.');
+      throw new Error('Usuario nao autenticado.');
+    }
+
+    setErroComentario('');
+
+    const resposta = await fetch(`${API_BASE}/comments`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ productId, content })
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${tokenSessao}`
+      },
+      body: JSON.stringify({ productId: idProduto, content: conteudo })
     });
 
-    if (!response.ok) {
+    if (!resposta.ok) {
+      const payload = (await resposta.json().catch(() => null)) as { error?: string } | null;
+      setErroComentario(payload?.error ?? 'Erro ao salvar comentario.');
       throw new Error('Erro ao salvar comentario.');
     }
 
-    await fetchProducts();
+    setErroComentario('');
+    await buscarProdutos();
   };
 
-  const catalogProducts = useMemo(() => products.map(formatCatalogProduct), [products]);
-  const filteredByCategory = useMemo(() => {
-    if (selectedCategory === 'Todos') {
-      return catalogProducts;
-    }
-    return catalogProducts.filter((product) => product.category === selectedCategory);
-  }, [catalogProducts, selectedCategory]);
+  const fazerLogout = () => {
+    localStorage.removeItem(CHAVE_TOKEN_LOCALSTORAGE);
+    document.cookie = `${CHAVE_COOKIE_SESSAO}=; path=/; Max-Age=0; SameSite=Lax`;
+    setTokenSessao('');
+    setUsuarioLogado(null);
+  };
 
-  const productsByCategory = useMemo(() => {
-    const groups: Record<CatalogProduct['category'], CatalogProduct[]> = {
+  const abrirPaginaLogin = () => {
+    aoNavegar('login');
+  };
+
+  const produtosCatalogo = useMemo(() => produtos.map(formatarProdutoCatalogo), [produtos]);
+  const produtosFiltradosPorCategoria = useMemo(() => {
+    if (categoriaSelecionada === 'Todos') {
+      return produtosCatalogo;
+    }
+    return produtosCatalogo.filter((produto) => produto.category === categoriaSelecionada);
+  }, [produtosCatalogo, categoriaSelecionada]);
+
+  const produtosPorCategoria = useMemo(() => {
+    const grupos: Record<CatalogProduct['category'], CatalogProduct[]> = {
       Smartphones: [],
       Notebooks: [],
       Monitores: [],
@@ -175,134 +287,192 @@ export const HomePage = () => {
       Acessorios: []
     };
 
-    catalogProducts.forEach((product) => {
-      groups[product.category].push(product);
+    produtosCatalogo.forEach((produto) => {
+      grupos[produto.category].push(produto);
     });
 
-    return groups;
-  }, [catalogProducts]);
+    return grupos;
+  }, [produtosCatalogo]);
 
-  const firstCategory: CatalogProduct['category'] =
-    selectedCategory === 'Todos' ? 'Smartphones' : selectedCategory;
-  const secondCategory: CatalogProduct['category'] =
-    selectedCategory === 'Todos'
+  const categoriaPrincipal: CatalogProduct['category'] =
+    categoriaSelecionada === 'Todos' ? 'Smartphones' : categoriaSelecionada;
+  const categoriaSecundaria: CatalogProduct['category'] =
+    categoriaSelecionada === 'Todos'
       ? 'Monitores'
-      : CATEGORY_ORDER.find(
-          (category) => category !== firstCategory && productsByCategory[category].length > 0
-        ) ?? firstCategory;
+      : ORDEM_CATEGORIAS.find(
+          (categoria) => categoria !== categoriaPrincipal && produtosPorCategoria[categoria].length > 0
+        ) ?? categoriaPrincipal;
 
-  const firstRowProducts = productsByCategory[firstCategory];
-  const secondRowProducts = productsByCategory[secondCategory];
-  const thirdRowProducts = selectedCategory === 'Todos' ? catalogProducts : filteredByCategory;
-  const selectedProduct = catalogProducts.find((item) => item.id === selectedProductId);
+  const produtosPrimeiraLinha = produtosPorCategoria[categoriaPrincipal];
+  const produtosSegundaLinha = produtosPorCategoria[categoriaSecundaria];
+  const produtosTerceiraLinha = categoriaSelecionada === 'Todos' ? produtosCatalogo : produtosFiltradosPorCategoria;
+  const produtoSelecionado = produtosCatalogo.find((item) => item.id === idProdutoSelecionado);
 
-  const moveCarousel = (row: 'row1' | 'row2' | 'row3', direction: 'left' | 'right') => {
-    const element = rowRefs[row].current;
-    if (!element) {
+  const moverCarrossel = (linha: 'row1' | 'row2' | 'row3', direcao: 'left' | 'right') => {
+    const elemento = refsCarrosseis[linha].current;
+    if (!elemento) {
       return;
     }
 
-    const amount = Math.max(320, Math.floor(element.clientWidth * 0.7));
-    const maxScroll = element.scrollWidth - element.clientWidth;
-    const atStart = element.scrollLeft <= 2;
-    const atEnd = element.scrollLeft >= maxScroll - 2;
+    const quantidade = Math.max(320, Math.floor(elemento.clientWidth * 0.7));
+    const rolagemMaxima = elemento.scrollWidth - elemento.clientWidth;
+    const noInicio = elemento.scrollLeft <= 2;
+    const noFim = elemento.scrollLeft >= rolagemMaxima - 2;
 
-    if (direction === 'right' && atEnd) {
-      element.scrollTo({ left: 0, behavior: 'smooth' });
+    if (direcao === 'right' && noFim) {
+      elemento.scrollTo({ left: 0, behavior: 'smooth' });
       return;
     }
 
-    if (direction === 'left' && atStart) {
-      element.scrollTo({ left: maxScroll, behavior: 'smooth' });
+    if (direcao === 'left' && noInicio) {
+      elemento.scrollTo({ left: rolagemMaxima, behavior: 'smooth' });
       return;
     }
 
-    const offset = direction === 'left' ? -amount : amount;
-    element.scrollBy({ left: offset, behavior: 'smooth' });
+    const deslocamento = direcao === 'left' ? -quantidade : quantidade;
+    elemento.scrollBy({ left: deslocamento, behavior: 'smooth' });
   };
 
   return (
-    <StoreTemplate query={query} onSearch={handleSearch} activeNav={activeNav} onNavigate={handleNavigate}>
-      <HeroBanner
-        onViewOffers={() => handleNavigate('ofertas')}
-        onViewCollections={() => handleNavigate('categorias')}
-      />
+    <StoreTemplate
+      consulta={consulta}
+      aoBuscar={aoBuscar}
+      navegacaoAtiva={navegacaoAtiva}
+      aoNavegar={aoNavegar}
+      usuarioLogado={usuarioLogado}
+    >
+      {!produtoSelecionado ? (
+        <section className="quem-somos" id="quem-somos-section">
+          <div className="quem-somos__media" aria-hidden="true">
+            <img src="/logo.png" alt="" loading="lazy" />
+          </div>
+          <div className="quem-somos__conteudo">
+            <h3>Quem Somos</h3>
+            <p>
+              A Nexora Tech e uma loja focada em tecnologia para estudo, trabalho e performance.
+              Nosso objetivo e reunir produtos confiaveis para montagem de setup completo,
+              com precos competitivos e uma experiencia de compra simples.
+            </p>
+            <p>
+              Este projeto simula um e-commerce real para fins academicos, com foco em usabilidade,
+              organizacao por categorias e demonstracoes praticas para o TCC.
+            </p>
+          </div>
+        </section>
+      ) : null}
+
       <div id="categories-section">
         <CategoryTabs
-          selectedCategory={selectedCategory}
-          onSelectCategory={(category) => setSelectedCategory(category as DisplayCategory)}
+          categoriaSelecionada={categoriaSelecionada}
+          aoSelecionarCategoria={(categoria) => setCategoriaSelecionada(categoria as CategoriaExibida)}
         />
       </div>
-      <PromoStrip />
 
-      {query && (
-        <section className="alert-xss">
-          <p className="kicker">Reflected XSS</p>
-          <p>O parametro `q` da URL e renderizado sem sanitizacao:</p>
-          <VulnerableHtml content={query} className="query-preview" />
-        </section>
-      )}
+      {carregando ? <p className="status-text">Carregando produtos...</p> : null}
+      {erro ? <p className="status-text status-text--error">{erro}</p> : null}
 
-      {isLoading ? <p className="status-text">Carregando produtos...</p> : null}
-      {error ? <p className="status-text status-text--error">{error}</p> : null}
-
-      {!isLoading && !error && selectedProduct ? (
+      {!carregando && !erro && produtoSelecionado ? (
         <ProductDetails
-          product={selectedProduct}
-          onBack={closeProduct}
-          onAddComment={handleAddComment}
+          produto={produtoSelecionado}
+          aoVoltar={fecharProduto}
+          aoAdicionarComentario={adicionarComentario}
+          usuarioLogado={usuarioLogado}
+          erroComentario={erroComentario}
+          aoLogout={fazerLogout}
+          aoIrParaLogin={abrirPaginaLogin}
         />
       ) : null}
 
-      {!isLoading && !error && !selectedProduct ? (
+      {!carregando && !erro && !produtoSelecionado && categoriaSelecionada === 'Todos' ? (
         <>
           <section className="deal-row-head" id="offers-section">
-            <h3>Grab the best deal on <span>{firstCategory}</span></h3>
+            <h3>Aproveite as melhores ofertas em <span>{categoriaPrincipal}</span></h3>
             <div className="deal-row-controls">
-              <button type="button" onClick={() => moveCarousel('row1', 'left')}>{'<'}</button>
-              <button type="button" onClick={() => moveCarousel('row1', 'right')}>{'>'}</button>
-              <button type="button" onClick={() => setSelectedCategory(firstCategory)}>View all</button>
+              <button type="button" onClick={() => moverCarrossel('row1', 'left')}>{'<'}</button>
+              <button type="button" onClick={() => moverCarrossel('row1', 'right')}>{'>'}</button>
+              <button type="button" onClick={() => setCategoriaSelecionada(categoriaPrincipal)}>Ver todos</button>
             </div>
           </section>
-          <section className="deal-row" ref={(el) => { rowRefs.row1.current = el; }}>
-            {firstRowProducts.map((product) => (
-              <ProductCard key={`row-1-${product.id}`} product={product} onOpen={openProduct} />
+          <section className="deal-row" ref={(el) => { refsCarrosseis.row1.current = el; }}>
+            {produtosPrimeiraLinha.map((produto) => (
+              <ProductCard key={`linha-1-${produto.id}`} product={produto} aoSelecionar={abrirProduto} />
             ))}
           </section>
 
           <section className="deal-row-head">
-            <h3>Trending offers on <span>{secondCategory}</span></h3>
+            <h3>Ofertas em alta de <span>{categoriaSecundaria}</span></h3>
             <div className="deal-row-controls">
-              <button type="button" onClick={() => moveCarousel('row2', 'left')}>{'<'}</button>
-              <button type="button" onClick={() => moveCarousel('row2', 'right')}>{'>'}</button>
-              <button type="button" onClick={() => setSelectedCategory(secondCategory)}>View all</button>
+              <button type="button" onClick={() => moverCarrossel('row2', 'left')}>{'<'}</button>
+              <button type="button" onClick={() => moverCarrossel('row2', 'right')}>{'>'}</button>
+              <button type="button" onClick={() => setCategoriaSelecionada(categoriaSecundaria)}>Ver todos</button>
             </div>
           </section>
-          <section className="deal-row" ref={(el) => { rowRefs.row2.current = el; }}>
-            {secondRowProducts.map((product) => (
-              <ProductCard key={`row-2-${product.id}`} product={product} onOpen={openProduct} />
+          <section className="deal-row" ref={(el) => { refsCarrosseis.row2.current = el; }}>
+            {produtosSegundaLinha.map((produto) => (
+              <ProductCard key={`linha-2-${produto.id}`} product={produto} aoSelecionar={abrirProduto} />
             ))}
           </section>
 
           <section className="deal-row-head">
-            <h3>Explore all deals in <span>{selectedCategory}</span></h3>
+            <h3>Explore todas as ofertas em <span>{categoriaSelecionada}</span></h3>
             <div className="deal-row-controls">
-              <button type="button" onClick={() => moveCarousel('row3', 'left')}>{'<'}</button>
-              <button type="button" onClick={() => moveCarousel('row3', 'right')}>{'>'}</button>
-              <button type="button" onClick={() => setSelectedCategory('Todos')}>View all</button>
+              <button type="button" onClick={() => moverCarrossel('row3', 'left')}>{'<'}</button>
+              <button type="button" onClick={() => moverCarrossel('row3', 'right')}>{'>'}</button>
+              <button type="button" onClick={() => setCategoriaSelecionada('Todos')}>Ver todos</button>
             </div>
           </section>
-          <section className="deal-row" ref={(el) => { rowRefs.row3.current = el; }}>
-            {thirdRowProducts.map((product) => (
-              <ProductCard key={`row-3-${product.id}`} product={product} onOpen={openProduct} />
+          <section className="deal-row" ref={(el) => { refsCarrosseis.row3.current = el; }}>
+            {produtosTerceiraLinha.map((produto) => (
+              <ProductCard key={`linha-3-${produto.id}`} product={produto} aoSelecionar={abrirProduto} />
             ))}
           </section>
         </>
       ) : null}
 
-      {!isLoading && !error && products.length === 0 ? (
+      {!carregando && !erro && !produtoSelecionado && categoriaSelecionada !== 'Todos' ? (
+        <>
+          <section className="deal-row-head" id="offers-section">
+            <h3>Ofertas da categoria <span>{categoriaSelecionada}</span></h3>
+            <div className="deal-row-controls">
+              <button type="button" onClick={() => moverCarrossel('row1', 'left')}>{'<'}</button>
+              <button type="button" onClick={() => moverCarrossel('row1', 'right')}>{'>'}</button>
+              <button type="button" onClick={() => setCategoriaSelecionada('Todos')}>Ver todos</button>
+            </div>
+          </section>
+          <section className="deal-row" ref={(el) => { refsCarrosseis.row1.current = el; }}>
+            {produtosFiltradosPorCategoria.map((produto) => (
+              <ProductCard key={`categoria-${produto.id}`} product={produto} aoSelecionar={abrirProduto} />
+            ))}
+          </section>
+        </>
+      ) : null}
+
+      {!carregando && !erro && produtos.length === 0 ? (
         <p className="status-text">Nenhum produto encontrado.</p>
       ) : null}
+
+      <section className="duvidas-frequentes" id="duvidas-section">
+        <h3>Duvidas Frequentes</h3>
+        <div className="duvidas-frequentes__lista">
+          {DUVIDAS_FREQUENTES.map((duvida, indice) => {
+            const aberta = indiceDuvidaAberta === indice;
+            return (
+              <article key={duvida.pergunta} className={`duvida-item ${aberta ? 'is-open' : ''}`}>
+                <button
+                  type="button"
+                  className="duvida-item__pergunta"
+                  onClick={() => setIndiceDuvidaAberta(aberta ? null : indice)}
+                  aria-expanded={aberta}
+                >
+                  <span>{duvida.pergunta}</span>
+                  <strong>{aberta ? '−' : '+'}</strong>
+                </button>
+                {aberta ? <p className="duvida-item__resposta">{duvida.resposta}</p> : null}
+              </article>
+            );
+          })}
+        </div>
+      </section>
     </StoreTemplate>
   );
 };

@@ -3,26 +3,26 @@ import { Button } from '../atoms/Button';
 import { TextInput } from '../atoms/TextInput';
 
 interface SearchBarProps {
-  defaultQuery?: string;
-  onSearch: (query: string) => void;
+  consultaInicial?: string;
+  aoBuscar: (consulta: string) => void;
 }
 
-export const SearchBar = ({ defaultQuery = '', onSearch }: SearchBarProps) => {
-  const [query, setQuery] = useState(defaultQuery);
+export const SearchBar = ({ consultaInicial = '', aoBuscar }: SearchBarProps) => {
+  const [consulta, setConsulta] = useState(consultaInicial);
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const aoEnviar = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    onSearch(query);
+    aoBuscar(consulta);
   };
 
   return (
-    <form className="search-bar" onSubmit={handleSubmit}>
+    <form className="search-bar" onSubmit={aoEnviar}>
       <TextInput
         id="product-search"
         name="q"
         placeholder="Buscar notebook, mouse, monitor..."
-        value={query}
-        onChange={(event) => setQuery(event.target.value)}
+        value={consulta}
+        onChange={(event) => setConsulta(event.target.value)}
         aria-label="Buscar produtos"
       />
       <Button type="submit" variant="primary">
