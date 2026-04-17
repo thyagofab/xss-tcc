@@ -7,47 +7,51 @@ interface LoginPageProps {
   usuarioLogado: Usuario | null;
   autenticando: boolean;
   erroAutenticacao: string;
+  mensagemSucesso: string;
   aoLogin: (username: string, senha: string) => Promise<void>;
   aoRegistrar: (username: string, senha: string) => Promise<void>;
   aoLogout: () => void;
+  aoIrParaCadastro?: () => void;
 }
 
 export const LoginPage = ({
   usuarioLogado,
   autenticando,
   erroAutenticacao,
+  mensagemSucesso,
   aoLogin,
   aoRegistrar,
-  aoLogout
+  aoLogout,
+  aoIrParaCadastro
 }: LoginPageProps) => {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [erroLocal, setErroLocal] = useState('');
-  const usernameRef = useRef<HTMLInputElement | null>(null);
+  const emailRef = useRef<HTMLInputElement | null>(null);
   const senhaRef = useRef<HTMLInputElement | null>(null);
 
   const limparCampos = () => {
-    setUsername('');
+    setEmail('');
     setSenha('');
     setErroLocal('');
   };
 
   const fazerLogin = async () => {
-    const usernameAtual = (usernameRef.current?.value ?? username).trim();
+    const emailAtual = (emailRef.current?.value ?? email).trim();
     const senhaAtual = senhaRef.current?.value ?? senha;
 
-    if (!usernameAtual || !senhaAtual) {
-      setErroLocal('Preencha usuario e senha para continuar.');
+    if (!emailAtual || !senhaAtual) {
+      setErroLocal('Preencha e-mail e senha para continuar.');
       return;
     }
 
     setErroLocal('');
-    await aoLogin(usernameAtual, senhaAtual);
+    await aoLogin(emailAtual, senhaAtual);
     limparCampos();
   };
 
   const fazerRegistro = async () => {
-    const usernameAtual = (usernameRef.current?.value ?? username).trim();
+    const usernameAtual = (emailRef.current?.value ?? email).trim();
     const senhaAtual = senhaRef.current?.value ?? senha;
 
     if (!usernameAtual || !senhaAtual) {
@@ -61,7 +65,17 @@ export const LoginPage = ({
   };
 
   return (
-    <section className="pagina-login" id="login-section">
+    <>
+      <section className="login-hero">
+        <div className="login-hero__content">
+          <h1>Bem-vindo à Nexora Tech</h1>
+          <p>
+            Faça login ou crie sua conta para acessar todas as funcionalidades, comentar em produtos e acompanhar seus pedidos.
+          </p>
+        </div>
+      </section>
+
+      <section className="pagina-login" id="login-section">
       <div className="pagina-login__card">
         <p className="kicker">Conta do usuario</p>
         <h2>Entrar ou registrar</h2>
@@ -80,11 +94,12 @@ export const LoginPage = ({
             </p>
             <div className="auth-form-grid">
               <TextInput
-                name="username"
-                placeholder="Nome de usuario"
-                value={username}
-                ref={usernameRef}
-                onChange={(event) => setUsername(event.target.value)}
+                name="email"
+                type="email"
+                placeholder="E-mail"
+                value={email}
+                ref={emailRef}
+                onChange={(event) => setEmail(event.target.value)}
               />
               <TextInput
                 name="password"
@@ -109,7 +124,11 @@ export const LoginPage = ({
                 type="button"
                 variant="ghost"
                 onClick={() => {
-                  void fazerRegistro();
+                  if (aoIrParaCadastro) {
+                    aoIrParaCadastro();
+                  } else {
+                    void fazerRegistro();
+                  }
                 }}
                 disabled={autenticando}
               >
@@ -118,9 +137,11 @@ export const LoginPage = ({
             </div>
             {erroLocal ? <p className="auth-error">{erroLocal}</p> : null}
             {erroAutenticacao ? <p className="auth-error">{erroAutenticacao}</p> : null}
+            {mensagemSucesso ? <p className="auth-success">{mensagemSucesso}</p> : null}
           </>
         )}
       </div>
     </section>
+    </>
   );
 };

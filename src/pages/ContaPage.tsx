@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { StoreTemplate } from '../components/templates/StoreTemplate';
 import { LoginPage } from './LoginPage';
+import { RegisterPage, type RegistroDados } from './RegisterPage';
 import type { Usuario } from '../types/domain';
 
 const API_BASE = 'http://localhost:3001/api';
@@ -9,12 +10,15 @@ const CHAVE_TOKEN_LOCALSTORAGE = 'token_usuario_tcc';
 const CHAVE_COOKIE_SESSAO = 'token_usuario_tcc';
 
 type AlvoNavegacao = 'home' | 'ofertas' | 'categorias' | 'contato' | 'login';
+type PaginaAtiva = 'login' | 'register';
 
 export const ContaPage = () => {
   const navigate = useNavigate();
   const [usuarioLogado, setUsuarioLogado] = useState<Usuario | null>(null);
   const [autenticando, setAutenticando] = useState(false);
   const [erroAutenticacao, setErroAutenticacao] = useState('');
+  const [mensagemSucesso, setMensagemSucesso] = useState('');
+  const [paginaAtiva, setPaginaAtiva] = useState<PaginaAtiva>('login');
 
   useEffect(() => {
     const tokenArmazenado = localStorage.getItem(CHAVE_TOKEN_LOCALSTORAGE) ?? '';
@@ -66,17 +70,27 @@ export const ContaPage = () => {
     document.cookie = `${CHAVE_COOKIE_SESSAO}=${encodeURIComponent(token)}; path=/; SameSite=Lax`;
     setUsuarioLogado(user);
     setErroAutenticacao('');
+    setMensagemSucesso('');
   };
 
-  const autenticar = async (rota: 'login' | 'register', username: string, senha: string) => {
+  const validarEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+  const autenticar = async (rota: 'login' | 'register', email: string, senha: string) => {
     setAutenticando(true);
     setErroAutenticacao('');
+    setMensagemSucesso('');
+
+    if (!validarEmail(email)) {
+      setErroAutenticacao('Informe um e-mail valido para continuar.');
+      setAutenticando(false);
+      return;
+    }
 
     try {
       const resposta = await fetch(`${API_BASE}/auth/${rota}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password: senha })
+        body: JSON.stringify({ username: email, password: senha, email })
       });
 
       const dados = (await resposta.json().catch(() => null)) as { error?: string; token?: string; user?: Usuario } | null;
@@ -94,12 +108,47 @@ export const ContaPage = () => {
     }
   };
 
-  const fazerLogin = async (username: string, senha: string) => {
-    await autenticar('login', username, senha);
+  const fazerLogin = async (email: string, senha: string) => {
+    await autenticar('login', email, senha);
   };
 
   const fazerRegistro = async (username: string, senha: string) => {
     await autenticar('register', username, senha);
+  };
+
+  const fazerRegistroCompleto = async (dados: RegistroDados) => {
+    setAutenticando(true);
+    setErroAutenticacao('');
+    setMensagemSucesso('');
+
+    try {
+      const resposta = await fetch(`${API_BASE}/auth/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: dados.email,
+          password: dados.senha,
+          nome: dados.nome,
+          email: dados.email,
+          telefone: dados.telefone,
+          endereco: dados.endereco
+        })
+      });
+
+      const respostaData = (await resposta.json().catch(() => null)) as { error?: string } | null;
+
+      if (!resposta.ok) {
+        setErroAutenticacao(respostaData?.error ?? 'Falha ao criar a conta.');
+        return;
+      }
+
+      setPaginaAtiva('login');
+      setMensagemSucesso('Conta criada com sucesso! Agora faca login com seu e-mail.');
+    } catch {
+      setErroAutenticacao('Nao foi possivel criar a conta. Confira se a API esta rodando.');
+    } finally {
+      setAutenticando(false);
+    }
   };
 
   const fazerLogout = () => {
@@ -116,14 +165,31 @@ export const ContaPage = () => {
       aoNavegar={aoNavegar}
       usuarioLogado={usuarioLogado}
     >
-      <LoginPage
-        usuarioLogado={usuarioLogado}
-        autenticando={autenticando}
-        erroAutenticacao={erroAutenticacao}
-        aoLogin={fazerLogin}
-        aoRegistrar={fazerRegistro}
-        aoLogout={fazerLogout}
-      />
+      {paginaAtiva === 'login' ? (
+        <LoginPage
+          usuarioLogado={usuarioLogado}
+          autenticando={autenticando}
+          erroAutenticacao={erroAutenticacao}
+          mensagemSucesso={mensagemSucesso}
+          aoLogin={fazerLogin}
+          aoRegistrar={fazerRegistro}
+          aoLogout={fazerLogout}
+          aoIrParaCadastro={() => {
+            setMensagemSucesso('');
+            setPaginaAtiva('register');
+          }}
+        />
+      ) : (
+        <RegisterPage
+          autenticando={autenticando}
+          erroAutenticacao={erroAutenticacao}
+          aoRegistrar={fazerRegistroCompleto}
+          aoVoltarLogin={() => {
+            setErroAutenticacao('');
+            setPaginaAtiva('login');
+          }}
+        />
+      )}
     </StoreTemplate>
   );
 };

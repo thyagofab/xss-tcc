@@ -7,8 +7,8 @@ import { CommentForm } from '../molecules/CommentForm';
 interface ProductDetailsProps {
   produto: Product & {
     price: string;
-    oldPrice: string;
-    savings: string;
+    oldPrice?: string;
+    savings?: string;
     imageUrl: string;
     buyLink: string;
   };
@@ -43,7 +43,7 @@ export const ProductDetails = ({
   return (
     <section className="product-details">
       <button type="button" className="back-link" onClick={aoVoltar}>
-        {'<- Voltar para vitrine de ofertas'}
+        <span>Voltar para vitrine de ofertas</span>
       </button>
 
       <div className="product-details__layout">
@@ -56,9 +56,9 @@ export const ProductDetails = ({
           <h2>{produto.name}</h2>
           <p>{produto.description}</p>
           <p className="deal-card__price detail-price">
-            {produto.price} <span>{produto.oldPrice}</span>
+            {produto.price} {produto.oldPrice ? <span>{produto.oldPrice}</span> : null}
           </p>
-          <p className="deal-card__save">Economia estimada: {produto.savings}</p>
+          {produto.savings ? <p className="deal-card__save">Economia estimada: {produto.savings}</p> : null}
 
           <div className="rating-box">
             <strong>Avaliar produto</strong>
@@ -89,7 +89,7 @@ export const ProductDetails = ({
       </div>
 
       <section className="comments-section detail-comments">
-        <h3>Comentarios e avaliacoes (XSS Armazenado)</h3>
+        <h3>Comentarios e avaliacoes</h3>
         {usuarioLogado ? (
           <div className="usuario-logado-box">
             <span>Logado como <strong>{usuarioLogado.username}</strong></span>

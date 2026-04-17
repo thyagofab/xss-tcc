@@ -97,11 +97,17 @@ app.get('/api/products', async (_req: Request, res: Response) => {
 
 
 app.post('/api/auth/register', async (req: Request, res: Response) => {
-  const username = String(req.body?.username ?? '').trim();
+  const nome = String(req.body?.nome ?? req.body?.username ?? '').trim();
+  const email = String(req.body?.email ?? req.body?.username ?? '').trim().toLowerCase();
   const senha = String(req.body?.password ?? '');
 
-  if (username.length < 3) {
-    res.status(400).json({ error: 'Nome de usuario deve ter no minimo 3 caracteres.' });
+  if (nome.length < 3) {
+    res.status(400).json({ error: 'Nome deve ter no minimo 3 caracteres.' });
+    return;
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    res.status(400).json({ error: 'Informe um e-mail valido.' });
     return;
   }
 
@@ -111,15 +117,16 @@ app.post('/api/auth/register', async (req: Request, res: Response) => {
   }
 
   try {
-    const existente = await prisma.user.findUnique({ where: { username } });
+    const existente = await prisma.user.findUnique({ where: { email } });
     if (existente) {
-      res.status(409).json({ error: 'Nome de usuario ja cadastrado.' });
+      res.status(409).json({ error: 'E-mail ja cadastrado.' });
       return;
     }
 
     const usuario = await prisma.user.create({
       data: {
-        username,
+        username: nome,
+        email,
         password: hashSenha(senha)
       },
       select: { id: true, username: true }
@@ -135,11 +142,16 @@ app.post('/api/auth/register', async (req: Request, res: Response) => {
 });
 
 app.post('/api/auth/login', async (req: Request, res: Response) => {
-  const username = String(req.body?.username ?? '').trim();
+  const email = String(req.body?.email ?? req.body?.username ?? '').trim().toLowerCase();
   const senha = String(req.body?.password ?? '');
 
+  if (!email) {
+    res.status(400).json({ error: 'Informe o e-mail para login.' });
+    return;
+  }
+
   try {
-    const usuario = await prisma.user.findUnique({ where: { username } });
+    const usuario = await prisma.user.findUnique({ where: { email } });
     if (!usuario || !validarSenha(senha, usuario.password)) {
       res.status(401).json({ error: 'Credenciais invalidas.' });
       return;

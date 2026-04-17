@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CategoryTabs } from '../components/molecules/CategoryTabs';
 import { ProductDetails } from '../components/organisms/ProductDetails';
 import { ProductCard } from '../components/organisms/ProductCard';
 import { StoreTemplate } from '../components/templates/StoreTemplate';
+import { VulnerableHtml } from '../components/atoms/VulnerableHtml';
 import type { Product, Usuario } from '../types/domain';
 
 const API_BASE = 'http://localhost:3001/api';
@@ -12,8 +13,9 @@ const CHAVE_COOKIE_SESSAO = 'token_usuario_tcc';
 
 interface CatalogProduct extends Product {
   price: string;
-  oldPrice: string;
-  savings: string;
+  oldPrice?: string;
+  savings?: string;
+  discountLabel?: string;
   imageUrl: string;
   buyLink: string;
   category: 'Cadernos' | 'Smartphones' | 'Notebooks' | 'Monitores' | 'Perifericos' | 'Acessorios';
@@ -21,14 +23,6 @@ interface CatalogProduct extends Product {
 
 type AlvoNavegacao = 'home' | 'ofertas' | 'categorias' | 'contato' | 'login';
 type CategoriaExibida = 'Todos' | CatalogProduct['category'];
-const ORDEM_CATEGORIAS: CatalogProduct['category'][] = [
-  'Smartphones',
-  'Notebooks',
-  'Monitores',
-  'Cadernos',
-  'Perifericos',
-  'Acessorios'
-];
 
 const CATEGORIA_POR_NOME: Record<string, CatalogProduct['category']> = {
   'Acer Nitro 5 - TCC Edition': 'Notebooks',
@@ -43,7 +37,9 @@ const CATEGORIA_POR_NOME: Record<string, CatalogProduct['category']> = {
   'Webcam Stream HD 1080p': 'Acessorios',
   'Notebook DevBook Air 14': 'Notebooks',
   'Monitor PixelView 24 IPS': 'Monitores',
-  'Caderno Study Planner Max': 'Cadernos'
+  'Caderno Study Planner Max': 'Cadernos',
+  'Relogio Smart Nexora Fit': 'Acessorios',
+  'Tablet Nexora Tab 11': 'Smartphones'
 };
 
 const IMAGEM_PADRAO_PRODUTO = '/images.jpeg';
@@ -57,12 +53,50 @@ const IMAGEM_POR_NOME_PRODUTO: Record<string, string> = {
   'Caderno Smart Notes 360': '/caderno.webp',
   'Teclado Mecanico RGB Pro': '/teclado.jpg',
   'Mouse Gamer Falcon X': '/mouse.webp',
-  'Headset Pulse 7.1': '/images.jpeg',
+  'Headset Pulse 7.1': '/image.png',
   'Webcam Stream HD 1080p': '/webcam.jpg',
   'Notebook DevBook Air 14': '/notebook1.png',
   'Monitor PixelView 24 IPS': '/monitor.avif',
-  'Caderno Study Planner Max': '/caderno.webp'
+  'Caderno Study Planner Max': '/caderno.webp',
+  'Relogio Smart Nexora Fit': '/relogio.png',
+  'Tablet Nexora Tab 11': '/tablet.png'
 };
+
+const PRODUTOS_EXTRAS: Product[] = [
+  {
+    id: 1001,
+    name: 'Relogio Smart Nexora Fit',
+    description: 'Relogio inteligente com monitoramento de saude, notificacoes e bateria de longa duracao.',
+    comments: []
+  },
+  {
+    id: 1002,
+    name: 'Tablet Nexora Tab 11',
+    description: 'Tablet de 11 polegadas para estudo e entretenimento, com tela ampla e som imersivo.',
+    comments: []
+  }
+];
+
+const PROMOCOES_DESTAQUE = [
+  {
+    id: 'relogio',
+    eyebrow: 'Tecnologia no seu pulso',
+    title: 'Descubra a colecao de relogios smart',
+    category: 'Acessorios' as CategoriaExibida,
+    imageUrl:
+      'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=820&q=80',
+    imageAlt: 'Relogio inteligente em destaque'
+  },
+  {
+    id: 'tablet',
+    eyebrow: 'Performance para estudo e trabalho',
+    title: 'Explore nossa colecao de tablets',
+    category: 'Smartphones' as CategoriaExibida,
+    imageUrl:
+      'https://images.unsplash.com/photo-1561154464-82e9adf32764?auto=format&fit=crop&w=820&q=80',
+    imageAlt: 'Tablet em destaque'
+  }
+];
 
 const DUVIDAS_FREQUENTES = [
   {
@@ -87,18 +121,55 @@ const DUVIDAS_FREQUENTES = [
   }
 ];
 
-const formatarProdutoCatalogo = (produto: Product, indice: number): CatalogProduct => {
-  const tabelaPrecos = [
-    { price: 'R$ 3.299', oldPrice: 'R$ 7.499', savings: 'R$ 4.200' },
-    { price: 'R$ 1.049', oldPrice: 'R$ 1.499', savings: 'R$ 450' },
-    { price: 'R$ 1.699', oldPrice: 'R$ 2.499', savings: 'R$ 800' },
-    { price: 'R$ 3.199', oldPrice: 'R$ 4.099', savings: 'R$ 900' }
-  ];
+const LINKS_ECOMMERCE = [
+  {
+    id: 'ofertas',
+    icon: 'OF',
+    titulo: 'Ofertas da Semana',
+    descricao: 'Veja os produtos com maior desconto e condicoes especiais para o seu setup.',
+    alvo: 'offers-section'
+  },
+  {
+    id: 'categorias',
+    icon: 'CT',
+    titulo: 'Categorias em Alta',
+    descricao: 'Acesse os itens mais procurados em notebooks, monitores e perifericos.',
+    alvo: 'all-products-section'
+  },
+  {
+    id: 'suporte',
+    icon: 'SP',
+    titulo: 'Suporte de Pedido',
+    descricao: 'Consulte prazo, troca e garantia com nosso time de atendimento dedicado.',
+    alvo: 'contact-section'
+  }
+];
 
-  const precoSelecionado = tabelaPrecos[indice % tabelaPrecos.length];
+const formatarProdutoCatalogo = (produto: Product, indice: number): CatalogProduct => {
+  const tabelaPrecos = ['R$ 3.299', 'R$ 1.049', 'R$ 1.699', 'R$ 3.199'];
+  const tabelaDescontos = [
+    { oldPrice: 'R$ 7.499', savings: 'R$ 4.200', discountLabel: '56% OFF' },
+    { oldPrice: 'R$ 1.499', savings: 'R$ 450', discountLabel: '30% OFF' },
+    { oldPrice: 'R$ 2.499', savings: 'R$ 800', discountLabel: '32% OFF' },
+    { oldPrice: 'R$ 4.099', savings: 'R$ 900', discountLabel: '22% OFF' }
+  ];
+  const nomesComDesconto = new Set([
+    'Acer Nitro 5 - TCC Edition',
+    'Galaxy M33 5G 6GB 128GB',
+    'Monitor UltraWide Vision Pro 29',
+    'Teclado Mecanico RGB Pro',
+    'Notebook DevBook Air 14'
+  ]);
+  const descontoSelecionado = nomesComDesconto.has(produto.name)
+    ? tabelaDescontos[indice % tabelaDescontos.length]
+    : undefined;
+
   return {
     ...produto,
-    ...precoSelecionado,
+    price: tabelaPrecos[indice % tabelaPrecos.length],
+    oldPrice: descontoSelecionado?.oldPrice,
+    savings: descontoSelecionado?.savings,
+    discountLabel: descontoSelecionado?.discountLabel,
     imageUrl:
       IMAGEM_POR_NOME_PRODUTO[produto.name] ??
       IMAGEM_PADRAO_PRODUTO,
@@ -120,12 +191,6 @@ export const HomePage = () => {
   const [indiceDuvidaAberta, setIndiceDuvidaAberta] = useState<number | null>(0);
   const [usuarioLogado, setUsuarioLogado] = useState<Usuario | null>(null);
   const [tokenSessao, setTokenSessao] = useState('');
-  const refsCarrosseis = {
-    row1: useRef<HTMLElement | null>(null),
-    row2: useRef<HTMLElement | null>(null),
-    row3: useRef<HTMLElement | null>(null)
-  };
-
   useEffect(() => {
     const parametros = new URLSearchParams(window.location.search);
     setConsulta(parametros.get('q') ?? '');
@@ -196,6 +261,17 @@ export const HomePage = () => {
     setNavegacaoAtiva('ofertas');
   };
 
+  useEffect(() => {
+    if (!idProdutoSelecionado) {
+      return;
+    }
+
+    // Espera a renderizacao dos detalhes para posicionar o usuario no inicio do bloco.
+    requestAnimationFrame(() => {
+      rolarParaSecao('product-details-section');
+    });
+  }, [idProdutoSelecionado]);
+
   const fecharProduto = () => {
     setIdProdutoSelecionado(null);
     setNavegacaoAtiva('ofertas');
@@ -218,7 +294,11 @@ export const HomePage = () => {
       rolarParaSecao('home-section');
     }
     if (destino === 'ofertas') {
-      rolarParaSecao('offers-section');
+      setIdProdutoSelecionado(null);
+      setCategoriaSelecionada('Todos');
+      requestAnimationFrame(() => {
+        rolarParaSecao('offers-section');
+      });
     }
     if (destino === 'categorias') {
       rolarParaSecao('categories-section');
@@ -269,7 +349,19 @@ export const HomePage = () => {
     aoNavegar('login');
   };
 
-  const produtosCatalogo = useMemo(() => produtos.map(formatarProdutoCatalogo), [produtos]);
+  const selecionarCategoria = (categoria: CategoriaExibida) => {
+    setCategoriaSelecionada(categoria);
+    setNavegacaoAtiva('categorias');
+    setIdProdutoSelecionado(null);
+    requestAnimationFrame(() => {
+      rolarParaSecao('offers-section');
+    });
+  };
+
+  const produtosCatalogo = useMemo(
+    () => [...produtos, ...PRODUTOS_EXTRAS].map(formatarProdutoCatalogo),
+    [produtos]
+  );
   const produtosFiltradosPorCategoria = useMemo(() => {
     if (categoriaSelecionada === 'Todos') {
       return produtosCatalogo;
@@ -277,61 +369,18 @@ export const HomePage = () => {
     return produtosCatalogo.filter((produto) => produto.category === categoriaSelecionada);
   }, [produtosCatalogo, categoriaSelecionada]);
 
-  const produtosPorCategoria = useMemo(() => {
-    const grupos: Record<CatalogProduct['category'], CatalogProduct[]> = {
-      Smartphones: [],
-      Notebooks: [],
-      Monitores: [],
-      Cadernos: [],
-      Perifericos: [],
-      Acessorios: []
-    };
-
-    produtosCatalogo.forEach((produto) => {
-      grupos[produto.category].push(produto);
-    });
-
-    return grupos;
-  }, [produtosCatalogo]);
-
-  const categoriaPrincipal: CatalogProduct['category'] =
-    categoriaSelecionada === 'Todos' ? 'Smartphones' : categoriaSelecionada;
-  const categoriaSecundaria: CatalogProduct['category'] =
-    categoriaSelecionada === 'Todos'
-      ? 'Monitores'
-      : ORDEM_CATEGORIAS.find(
-          (categoria) => categoria !== categoriaPrincipal && produtosPorCategoria[categoria].length > 0
-        ) ?? categoriaPrincipal;
-
-  const produtosPrimeiraLinha = produtosPorCategoria[categoriaPrincipal];
-  const produtosSegundaLinha = produtosPorCategoria[categoriaSecundaria];
-  const produtosTerceiraLinha = categoriaSelecionada === 'Todos' ? produtosCatalogo : produtosFiltradosPorCategoria;
+  const produtosExibidos = categoriaSelecionada === 'Todos' ? produtosCatalogo : produtosFiltradosPorCategoria;
+  const produtosEmOferta = useMemo(
+    () => produtosCatalogo.filter((produto) => Boolean(produto.discountLabel)),
+    [produtosCatalogo]
+  );
+  const ofertasExibidas = useMemo(() => {
+    if (categoriaSelecionada === 'Todos') {
+      return produtosEmOferta;
+    }
+    return produtosEmOferta.filter((produto) => produto.category === categoriaSelecionada);
+  }, [produtosEmOferta, categoriaSelecionada]);
   const produtoSelecionado = produtosCatalogo.find((item) => item.id === idProdutoSelecionado);
-
-  const moverCarrossel = (linha: 'row1' | 'row2' | 'row3', direcao: 'left' | 'right') => {
-    const elemento = refsCarrosseis[linha].current;
-    if (!elemento) {
-      return;
-    }
-
-    const quantidade = Math.max(320, Math.floor(elemento.clientWidth * 0.7));
-    const rolagemMaxima = elemento.scrollWidth - elemento.clientWidth;
-    const noInicio = elemento.scrollLeft <= 2;
-    const noFim = elemento.scrollLeft >= rolagemMaxima - 2;
-
-    if (direcao === 'right' && noFim) {
-      elemento.scrollTo({ left: 0, behavior: 'smooth' });
-      return;
-    }
-
-    if (direcao === 'left' && noInicio) {
-      elemento.scrollTo({ left: rolagemMaxima, behavior: 'smooth' });
-      return;
-    }
-
-    const deslocamento = direcao === 'left' ? -quantidade : quantidade;
-    elemento.scrollBy({ left: deslocamento, behavior: 'smooth' });
-  };
 
   return (
     <StoreTemplate
@@ -342,106 +391,139 @@ export const HomePage = () => {
       usuarioLogado={usuarioLogado}
     >
       {!produtoSelecionado ? (
-        <section className="quem-somos" id="quem-somos-section">
-          <div className="quem-somos__media" aria-hidden="true">
-            <img src="/logo.png" alt="" loading="lazy" />
-          </div>
-          <div className="quem-somos__conteudo">
-            <h3>Quem Somos</h3>
-            <p>
-              A Nexora Tech e uma loja focada em tecnologia para estudo, trabalho e performance.
-              Nosso objetivo e reunir produtos confiaveis para montagem de setup completo,
-              com precos competitivos e uma experiencia de compra simples.
-            </p>
-            <p>
-              Este projeto simula um e-commerce real para fins academicos, com foco em usabilidade,
-              organizacao por categorias e demonstracoes praticas para o TCC.
-            </p>
-          </div>
+          <section className="quem-somos-v2" id="quem-somos-section">
+            <div className="quem-somos-v2__content">
+              <h3>Quem somos?</h3>
+              <p>
+                A Nexora Tech e um e-commerce especializado em tecnologia para estudo,
+                trabalho e entretenimento. Nosso objetivo e facilitar a sua compra com
+                informacoes claras, categorias organizadas e ofertas atualizadas.
+              </p>
+              <p>
+                Aqui voce encontra notebooks, smartphones, monitores e acessorios em um
+                unico lugar, com navegação simples, comparacao de preco e suporte para
+                escolher o produto ideal para o seu setup.
+              </p>
+            </div>
+
+            <aside className="quem-somos-v2__media" aria-label="Time da Nexora Tech">
+              <span className="quem-somos-v2__dot quem-somos-v2__dot--top" aria-hidden="true" />
+              <span className="quem-somos-v2__shadow" aria-hidden="true" />
+              <img
+                src="/logo.png"
+                alt="Logo da Nexora Tech"
+                loading="lazy"
+              />
+              <span className="quem-somos-v2__dot quem-somos-v2__dot--bottom" aria-hidden="true" />
+            </aside>
         </section>
       ) : null}
 
-      <div id="categories-section">
-        <CategoryTabs
-          categoriaSelecionada={categoriaSelecionada}
-          aoSelecionarCategoria={(categoria) => setCategoriaSelecionada(categoria as CategoriaExibida)}
-        />
-      </div>
+        {!produtoSelecionado ? (
+          <section className="links-ecommerce" aria-label="Links uteis da loja">
+            <div className="links-ecommerce__header">
+              <h3>Links Uteis</h3>
+              <p>
+                Navegue pelos principais atalhos do e-commerce para acompanhar ofertas,
+                consultar categorias e acessar o suporte da sua compra.
+              </p>
+            </div>
+            <div className="links-ecommerce__grid">
+              {LINKS_ECOMMERCE.map((link) => (
+                <article key={link.id} className="links-ecommerce__card">
+                  <div className="links-ecommerce__icon" aria-hidden="true">{link.icon}</div>
+                  <h4>{link.titulo}</h4>
+                  <p>{link.descricao}</p>
+                  <button
+                    type="button"
+                    className="links-ecommerce__cta"
+                    onClick={() => rolarParaSecao(link.alvo)}
+                  >
+                    Acesse
+                  </button>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+      {!produtoSelecionado ? (
+        <section className="featured-promos" aria-label="Promocoes em destaque">
+          {PROMOCOES_DESTAQUE.map((promo) => (
+            <article key={promo.id} className="featured-promo-card">
+              <div className="featured-promo-card__content">
+                <p className="featured-promo-card__eyebrow">{promo.eyebrow}</p>
+                <h3>{promo.title}</h3>
+                <button
+                  type="button"
+                  className="featured-promo-card__cta"
+                  onClick={() => selecionarCategoria(promo.category)}
+                >
+                  Shop now
+                </button>
+              </div>
+              <div className="featured-promo-card__media" aria-hidden="true">
+                <img src={promo.imageUrl} alt={promo.imageAlt} loading="lazy" />
+              </div>
+            </article>
+          ))}
+        </section>
+      ) : null}
+
+      {!produtoSelecionado ? (
+        <div id="categories-section">
+          <CategoryTabs
+            categoriaSelecionada={categoriaSelecionada}
+            aoSelecionarCategoria={(categoria) => selecionarCategoria(categoria as CategoriaExibida)}
+          />
+        </div>
+      ) : null}
+
+      {consulta ? (
+        <section className="status-text">
+          <p>Busca atual (XSS Refletido):</p>
+          <VulnerableHtml content={consulta} className="comment-content" />
+        </section>
+      ) : null}
 
       {carregando ? <p className="status-text">Carregando produtos...</p> : null}
       {erro ? <p className="status-text status-text--error">{erro}</p> : null}
 
       {!carregando && !erro && produtoSelecionado ? (
-        <ProductDetails
-          produto={produtoSelecionado}
-          aoVoltar={fecharProduto}
-          aoAdicionarComentario={adicionarComentario}
-          usuarioLogado={usuarioLogado}
-          erroComentario={erroComentario}
-          aoLogout={fazerLogout}
-          aoIrParaLogin={abrirPaginaLogin}
-        />
+        <section id="product-details-section">
+          <ProductDetails
+            produto={produtoSelecionado}
+            aoVoltar={fecharProduto}
+            aoAdicionarComentario={adicionarComentario}
+            usuarioLogado={usuarioLogado}
+            erroComentario={erroComentario}
+            aoLogout={fazerLogout}
+            aoIrParaLogin={abrirPaginaLogin}
+          />
+        </section>
       ) : null}
 
-      {!carregando && !erro && !produtoSelecionado && categoriaSelecionada === 'Todos' ? (
+      {!carregando && !erro && !produtoSelecionado ? (
         <>
-          <section className="deal-row-head" id="offers-section">
-            <h3>Aproveite as melhores ofertas em <span>{categoriaPrincipal}</span></h3>
-            <div className="deal-row-controls">
-              <button type="button" onClick={() => moverCarrossel('row1', 'left')}>{'<'}</button>
-              <button type="button" onClick={() => moverCarrossel('row1', 'right')}>{'>'}</button>
-              <button type="button" onClick={() => setCategoriaSelecionada(categoriaPrincipal)}>Ver todos</button>
-            </div>
+          <section className="section-head" id="offers-section">
+            <h3>Ofertas</h3>
           </section>
-          <section className="deal-row" ref={(el) => { refsCarrosseis.row1.current = el; }}>
-            {produtosPrimeiraLinha.map((produto) => (
-              <ProductCard key={`linha-1-${produto.id}`} product={produto} aoSelecionar={abrirProduto} />
+          <section className="catalog-grid">
+            {ofertasExibidas.map((produto) => (
+              <ProductCard key={`oferta-${produto.id}`} product={produto} aoSelecionar={abrirProduto} />
             ))}
           </section>
 
-          <section className="deal-row-head">
-            <h3>Ofertas em alta de <span>{categoriaSecundaria}</span></h3>
-            <div className="deal-row-controls">
-              <button type="button" onClick={() => moverCarrossel('row2', 'left')}>{'<'}</button>
-              <button type="button" onClick={() => moverCarrossel('row2', 'right')}>{'>'}</button>
-              <button type="button" onClick={() => setCategoriaSelecionada(categoriaSecundaria)}>Ver todos</button>
-            </div>
+          <section className="section-head" id="all-products-section">
+            <h3>
+              {categoriaSelecionada === 'Todos'
+                ? 'Todos os produtos'
+                : `Produtos da categoria ${categoriaSelecionada}`}
+            </h3>
           </section>
-          <section className="deal-row" ref={(el) => { refsCarrosseis.row2.current = el; }}>
-            {produtosSegundaLinha.map((produto) => (
-              <ProductCard key={`linha-2-${produto.id}`} product={produto} aoSelecionar={abrirProduto} />
-            ))}
-          </section>
-
-          <section className="deal-row-head">
-            <h3>Explore todas as ofertas em <span>{categoriaSelecionada}</span></h3>
-            <div className="deal-row-controls">
-              <button type="button" onClick={() => moverCarrossel('row3', 'left')}>{'<'}</button>
-              <button type="button" onClick={() => moverCarrossel('row3', 'right')}>{'>'}</button>
-              <button type="button" onClick={() => setCategoriaSelecionada('Todos')}>Ver todos</button>
-            </div>
-          </section>
-          <section className="deal-row" ref={(el) => { refsCarrosseis.row3.current = el; }}>
-            {produtosTerceiraLinha.map((produto) => (
-              <ProductCard key={`linha-3-${produto.id}`} product={produto} aoSelecionar={abrirProduto} />
-            ))}
-          </section>
-        </>
-      ) : null}
-
-      {!carregando && !erro && !produtoSelecionado && categoriaSelecionada !== 'Todos' ? (
-        <>
-          <section className="deal-row-head" id="offers-section">
-            <h3>Ofertas da categoria <span>{categoriaSelecionada}</span></h3>
-            <div className="deal-row-controls">
-              <button type="button" onClick={() => moverCarrossel('row1', 'left')}>{'<'}</button>
-              <button type="button" onClick={() => moverCarrossel('row1', 'right')}>{'>'}</button>
-              <button type="button" onClick={() => setCategoriaSelecionada('Todos')}>Ver todos</button>
-            </div>
-          </section>
-          <section className="deal-row" ref={(el) => { refsCarrosseis.row1.current = el; }}>
-            {produtosFiltradosPorCategoria.map((produto) => (
-              <ProductCard key={`categoria-${produto.id}`} product={produto} aoSelecionar={abrirProduto} />
+          <section className="catalog-grid">
+            {produtosExibidos.map((produto) => (
+              <ProductCard key={`catalogo-${produto.id}`} product={produto} aoSelecionar={abrirProduto} />
             ))}
           </section>
         </>

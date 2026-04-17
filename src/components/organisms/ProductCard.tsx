@@ -3,14 +3,17 @@ import type { Product } from '../../types/domain';
 interface ProductCardProps {
   product: Product & {
     price: string;
-    oldPrice: string;
-    savings: string;
+    oldPrice?: string;
+    savings?: string;
+    discountLabel?: string;
     imageUrl: string;
   };
   aoSelecionar: (idProduto: number) => void;
 }
 
 export const ProductCard = ({ product, aoSelecionar }: ProductCardProps) => {
+  const possuiDesconto = Boolean(product.savings);
+
   const handleImageError = (event: React.SyntheticEvent<HTMLImageElement>) => {
     const target = event.currentTarget;
     if (target.dataset.fallbackApplied === 'true') {
@@ -22,16 +25,21 @@ export const ProductCard = ({ product, aoSelecionar }: ProductCardProps) => {
   };
 
   return (
-    <article className="deal-card" onClick={() => aoSelecionar(product.id)} role="button" tabIndex={0}>
-      <div className="deal-card__badge">56% OFF</div>
+    <article
+      className={`deal-card ${possuiDesconto ? '' : 'deal-card--sem-desconto'}`.trim()}
+      onClick={() => aoSelecionar(product.id)}
+      role="button"
+      tabIndex={0}
+    >
+      {product.discountLabel ? <div className="deal-card__badge">{product.discountLabel}</div> : null}
       <div className="deal-card__image">
         <img src={product.imageUrl} alt={product.name} loading="lazy" onError={handleImageError} />
       </div>
       <h4>{product.name}</h4>
       <p className="deal-card__price">
-        {product.price} <span>{product.oldPrice}</span>
+        {product.price} {product.oldPrice ? <span>{product.oldPrice}</span> : null}
       </p>
-      <p className="deal-card__save">Economia: {product.savings}</p>
+      {product.savings ? <p className="deal-card__save">Economia: {product.savings}</p> : null}
       <div className="deal-card__hint">
         <small>Toque para abrir produto, comprar e avaliar</small>
       </div>

@@ -4,12 +4,14 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   children: ReactNode;
   variant?: 'primary' | 'ghost' | 'danger';
   size?: 'md' | 'sm';
+  fullWidth?: boolean;
 }
 
 export const Button = ({
   children,
   variant = 'primary',
   size = 'md',
+  fullWidth = false,
   className = '',
   ...props
 }: ButtonProps) => {
@@ -17,6 +19,7 @@ export const Button = ({
     'btn',
     `btn--${variant}`,
     `btn--${size}`,
+    fullWidth && 'btn--full',
     className
   ]
     .filter(Boolean)
