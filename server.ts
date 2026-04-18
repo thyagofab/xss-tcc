@@ -72,6 +72,86 @@ const buscarUsuarioAutenticado = async (req: Request) => {
   });
 };
 
+const criarPaginaVulneravel = (titulo: string, corpo: string) => {
+  return `<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>${titulo}</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 40px;
+        line-height: 1.5;
+      }
+      .box {
+        max-width: 900px;
+        border: 1px solid #ddd;
+        border-radius: 12px;
+        padding: 24px;
+      }
+      code, pre {
+        background: #f6f8fa;
+        border-radius: 8px;
+        padding: 2px 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="box">
+      ${corpo}
+    </div>
+  </body>
+</html>`;
+};
+
+const formatarComentariosEmHtml = async (productId?: string) => {
+  const filtro = productId ? Number(productId) : undefined;
+  const comments = await prisma.comment.findMany({
+    where: Number.isFinite(filtro) ? { productId: filtro } : undefined,
+    include: {
+      user: {
+        select: {
+          id: true,
+          username: true
+        }
+      }
+    },
+    orderBy: { id: 'desc' }
+  });
+
+  const itens = comments
+    .map((comment) => {
+      return `<li><strong>${comment.user.username}</strong>: <span>${comment.content}</span></li>`;
+    })
+    .join('\n');
+
+  return criarPaginaVulneravel(
+    'Comentarios vulneraveis',
+    `<h1>Comentarios renderizados sem sanitizacao</h1>
+     <p>Endpoint didatico para demonstrar XSS armazenado em HTML.</p>
+     <ul>${itens || '<li>Nenhum comentario encontrado.</li>'}</ul>`
+  );
+};
+
+app.get('/demo/xss/search', async (req: Request, res: Response) => {
+  const termo = String(req.query.q ?? 'busca vazia');
+  const pagina = criarPaginaVulneravel(
+    'Busca vulneravel',
+    `<h1>Resultado da busca</h1>
+     <p>Voce pesquisou por: ${termo}</p>
+     <p>Esse campo e refletido diretamente no HTML para fins didaticos.</p>`
+  );
+
+  res.type('html').send(pagina);
+});
+
+app.get('/demo/xss/comments', async (req: Request, res: Response) => {
+  const pagina = await formatarComentariosEmHtml(String(req.query.productId ?? ''));
+  res.type('html').send(pagina);
+});
+
 app.get('/api/products', async (_req: Request, res: Response) => {
   try {
     const products = await prisma.product.findMany({
