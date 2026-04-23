@@ -13,7 +13,7 @@ Repositório do projeto de TCC com frontend React + Vite e backend Node/Express 
 ## Como rodar
 
 ```bash
-cd my-app
+
 npm install
 npx prisma generate
 npx prisma db push
@@ -23,6 +23,5 @@ npm run dev
 Para a API:
 
 ```bash
-cd my-app
 npx ts-node server.ts
 ```
