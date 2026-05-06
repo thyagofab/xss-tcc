@@ -40,7 +40,19 @@ sudo apt-get install -y nodejs
 node --version
 ```
 
-Se usar NVM:
+### 1.1 Se usar NVM, primeiro instale o NVM:
+
+```bash
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+```
+
+Se precisar atualizar a variável PATH, inicie um novo bash:
+
+```bash
+bash
+```
+
+Depois instale e use o Node 22:
 
 ```bash
 nvm install 22
@@ -63,8 +75,7 @@ yarn --version
 
 ### Clone do repositório
 
-```bash 
-
+```bash
 git clone "https://github.com/thyagofab/xss-tcc.git"
 
 cd xss-tcc
@@ -72,8 +83,16 @@ cd xss-tcc
 
 ### Instalação das dependências
 
+Se usar Yarn:
+
 ```bash
 yarn install --ignore-engines
+```
+
+Se usar npm:
+
+```bash
+npm install
 ```
 
 ---
@@ -162,9 +181,18 @@ API Vulnerável do TCC rodando na porta 3001
 
 ### Terminal 2 — Frontend
 
+Se usar Yarn:
+
 ```bash
 cd ~/xss-tcc
 yarn run dev
+```
+
+Se usar npm:
+
+```bash
+cd ~/xss-tcc
+npm run dev
 ```
 
 ---
@@ -182,7 +210,5 @@ Backend:
 ```
 http://SEU_IP_PUBLICO:3001/api/products
 ```
-
-
 
 ---
